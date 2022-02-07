@@ -1,3 +1,9 @@
+(**
+  Translation from HOL4 numbers to bit strings
+
+  Used in inital attempt to speed up computations, used by evaluation of the
+  first phase
+**)
 open HolKernel Parse boolLib bossLib arithmeticTheory;
 open preambleDandelion;
 

@@ -1,5 +1,7 @@
 (**
-  TODO
+  Define an interval semantics on the elementary functions
+  of Dandelion. The function borrows the definitions and soundness
+  proof of basic arithmetic from FloVer
 **)
 open realTheory realLib RealArith transcTheory;
 open IntervalArithTheory sqrtApproxTheory IntervalValidationTheory;

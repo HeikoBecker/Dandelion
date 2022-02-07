@@ -1,3 +1,7 @@
+(**
+  small theorems extending HOL4's realTheory
+  used throughout the development
+**)
 open preambleDandelion;
 
 val _ = new_theory "moreReal";

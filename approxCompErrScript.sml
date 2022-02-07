@@ -1,3 +1,7 @@
+(**
+  Theorems about how to compose errors from truncated Taylor series
+  for each supported elementary function
+**)
 open IntervalArithTheory ErrorValidationTheory sqrtApproxTheory;
 open moreRealTheory mcLaurinApproxTheory realPolyTheory realPolyProofsTheory
      transcLangTheory approxPolyTheory transcIntvSemTheory;

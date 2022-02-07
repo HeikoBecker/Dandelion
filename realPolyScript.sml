@@ -5,6 +5,7 @@
   derivatives of univariate polynomials, and therefore adding
   multivariate polynomials would significantly increase the complexity
   of the project.
+  Inspired by and proven equivalent to the definitions of Harrison
 **)
 open realTheory realLib RealArith bossLib polyTheory;
 open renameTheory;

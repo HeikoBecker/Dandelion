@@ -1,4 +1,5 @@
-(** Define a computable version of the sturm sequence and
+(**
+    Define a computable version of the sturm sequence and
     prove its equivalence with the non-computable version
     of John Harrison
  **)

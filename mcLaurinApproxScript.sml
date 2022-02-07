@@ -1,5 +1,6 @@
-(*** Proof of McLaurin series for the transcendental function
-in the transcLang file **)
+(***
+  Proofs of McLaurin series for the supported elementary functions
+  described in transcLang file **)
 
 open moreRealTheory realPolyTheory realPolyProofsTheory;
 open preambleDandelion;

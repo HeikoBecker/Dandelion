@@ -1,5 +1,8 @@
+(**
+  Basic definitions used by Dandelion
+**)
 open realTheory realLib RealArith stringTheory;
-open renameTheory realPolyTheory transcLangTheory hintTheory;
+open renameTheory realPolyTheory transcLangTheory;
 open preambleDandelion;
 
 val _ = new_theory"checkerDefs";

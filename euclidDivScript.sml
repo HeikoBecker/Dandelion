@@ -1,4 +1,8 @@
-(** Define a computable version of the euclidian division **)
+(**
+  Computable version of polynomial division and a correctness proof.
+  Inspired by the implementation in Isabelle/HOL
+  https://isabelle.in.tum.de/library/HOL/HOL-Computational_Algebra/Polynomial.html
+  used to implement a computable version of Sturm sequences **)
 open pred_setTheory listTheory bossLib RealArith realTheory polyTheory;
 open realPolyTheory sturmTheory realPolyProofsTheory;
 open renameTheory;

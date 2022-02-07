@@ -1,3 +1,6 @@
+(**
+  Proof of Sturm's theorem, ported from Harrison material
+**)
 open pred_setTheory listTheory bossLib RealArith realTheory polyTheory;
 open renameTheory;
 open preambleDandelion;

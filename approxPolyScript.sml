@@ -1,4 +1,9 @@
-(** **)
+(**
+  Function that computes a polynomial approximation for a single elementary
+  function on a fixed interval, and its soundness proof.
+  Function approxPoly is reused in transcApproxSemScript.sml to build the overall
+  function implementing the first phase of Dandelion
+**)
 open realTheory realLib RealArith transcTheory;
 open realPolyTheory realPolyProofsTheory mcLaurinApproxTheory transcLangTheory;
 open preambleDandelion;

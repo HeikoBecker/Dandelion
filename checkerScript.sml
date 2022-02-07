@@ -1,11 +1,11 @@
 (**
-  CheckerScript: Define a Certificate Checker and a certificate structure for
-  Dandelion
+  Define high-level functions used by Dandelion and prove their
+  soundness by composing soundness proofs from the included files
 **)
 open realTheory realLib RealArith stringTheory polyTheory transcTheory;
 open renameTheory realPolyTheory transcLangTheory sturmComputeTheory sturmTheory
      drangTheory checkerDefsTheory pointCheckerTheory mcLaurinApproxTheory
-     hintTheory realPolyProofsTheory;
+     realPolyProofsTheory;
 open preambleDandelion;
 
 val _ = new_theory "checker";
@@ -262,12 +262,14 @@ Proof
   >> cond_cases_tac >> gs[EVERY_FILTER_TRUE]
 QED
 
+(*
 Theorem getExpHint_SOME_MEM:
   getExpHint hints = SOME n ⇒
   MEM (EXP_UB_SPLIT n) hints
 Proof
   Induct_on ‘hints’ >> gs[getExpHint_def, CaseEq"hint"]
 QED
+*)
 
 (*
 Theorem checker_soundness:

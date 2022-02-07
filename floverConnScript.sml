@@ -1,5 +1,5 @@
 (**
-  Connection to FloVer roundoff error analyzer
+  Connection to FloVer roundoff error analyzer, currently unused
 **)
 
 open ExpressionsTheory ExpressionSemanticsTheory realPolyTheory

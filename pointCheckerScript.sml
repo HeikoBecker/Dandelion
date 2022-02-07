@@ -3,6 +3,8 @@
   Part one of the soundness proof requires showing that the approximated
   polynomial agrees with what Remez thought the trancendental function behaves
   like on the set of points Ω
+
+  Currently not used in Dandelion
 **)
 
 open realTheory realLib RealArith stringTheory;

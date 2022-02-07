@@ -1,3 +1,7 @@
+(**
+  Proofs ported about extrema of real-valued, univariate functions,
+  ported from the work by Harrison
+**)
 open bossLib RealArith realTheory polyTheory limTheory;
 open renameTheory;
 open preambleDandelion;

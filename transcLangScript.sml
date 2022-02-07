@@ -1,5 +1,5 @@
 (**
-  Define a simple "language" for describing transcendental
+  Define a simple "language" for describing elementary
   functions. For now we only allow combinations, i.e.
   exp (sin (cos ...) but no additional operators like +,-,*,/
 **)

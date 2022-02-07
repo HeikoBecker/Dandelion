@@ -1,5 +1,6 @@
 (**
   Soundness theorem of the point-wise equivalence checker
+  Currently unused
 **)
 open realTheory realLib RealArith stringTheory;
 open renameTheory realPolyTheory checkerDefsTheory pointCheckerTheory;

@@ -1,5 +1,7 @@
 (**
-  TODO
+  Simple reflection function translating elements of the deeply
+  embedded transc datatype into the polynomials defined in
+  realPolyScript.sml
 **)
 open realPolyTheory realPolyProofsTheory transcLangTheory;
 open preambleDandelion;

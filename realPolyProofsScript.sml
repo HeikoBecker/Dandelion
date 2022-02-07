@@ -1,5 +1,5 @@
 (**
-  Some simple properties of polynomials
+  Some simple properties of polynomials on reals
 **)
 open realTheory realLib RealArith renameTheory polyTheory;
 open realPolyTheory;

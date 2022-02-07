@@ -1,4 +1,8 @@
-
+(**
+  Define an "approximating" semantics on the elementary functions
+  of Dandelion. The function approxTransc corresponds to the
+  function "approxAsPoly" in the paper
+**)
 open realTheory realLib RealArith transcTheory;
 open IntervalArithTheory ErrorValidationTheory sqrtApproxTheory;
 open realPolyTheory transcLangTheory approxPolyTheory transcIntvSemTheory approxCompErrTheory;
