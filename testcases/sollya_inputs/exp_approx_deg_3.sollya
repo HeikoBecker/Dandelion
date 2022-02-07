@@ -1,0 +1,34 @@
+oldDisplay=display;
+display = decimal!;  //putting ! after a command supresses its output
+
+diam = 1b-30;
+approxPrec = 53;
+prec = approxPrec;
+deg = 3;
+f = exp(x);
+dom = [0; 0.5];
+p = fpminimax(f, deg, [|prec,prec...|], dom, absolute);
+
+derivativeZeros = findzeros(diff(p-f),dom); // here the derivativeZeros is a list of intervals that guarantee to contain the exact zeros
+//derivativeZeros = inf(dom).:derivativeZeros:.sup(dom);
+maximum=0;
+for t in derivativeZeros do {
+  r = evaluate(abs(p-f), t); // r is an interval, we should take its upper bound
+  if sup(r) > maximum then { maximum=sup(r); argmaximum=t; };
+  if (evaluate(diff(p-f),inf(t)) * evaluate (diff(p-f),sup(t)) <= 0 ) then {
+  print ("Ok zero:");
+    print ("    (", mantissa (inf(t)), " * inv (2 pow", -exponent(inf(t)), "),");
+    print ("     ", mantissa (sup(t)), " * inv (2 pow", -exponent(sup(t)), "));");
+  };
+};
+print("<|");
+print("  transc := FUN \"", f, "\" VAR;");
+print("  poly := [");
+for i from 0 to degree(p) do{
+    coeff_p = coeff(p, i);
+    print (coeff_p);
+    //print("    ", mantissa (coeff_p), " * inv ( 2 pow ", -exponent(coeff_p), ");");
+};
+print ("    ];");
+
+print("Sanity check with infinity norm:", infnorm(p-f, dom, "proof.txt")); //here the last argument is rather for fun, it gives the proof of the bound, you can remove it.

@@ -1,0 +1,13 @@
+**/.HOLMK/*
+**/.hollogs/*
+*.uo
+*.ui
+*.dat
+*.sig
+*Theory*
+examples/sollya_inputs/*_coeffs_results*
+examples/sollya_inputs/*proof*
+binary/*.txt
+binary/sturmChecker.S
+binary/sturmChecker
+testcases/timing/

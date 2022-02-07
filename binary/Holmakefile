@@ -1,0 +1,11 @@
+INCLUDES = .. $(CMLDIR)/compiler $(CMLDIR)/compiler/backend $(CMLDIR)/basis/ \
+           $(CMLDIR)/translator/monadic
+
+ifndef CC
+  CC=gcc
+endif
+
+sturmChecker: $(CMLDIR)/basis/basis_ffi.o sturmChecker.S sturmMainCakeCompileTheory.uo
+	$(CC) sturmChecker.S $(CMLDIR)/basis/basis_ffi.o $(GCCFLAGS) -o $@
+
+sturmChecker.S: sturmMainCakeCompileTheory.uo

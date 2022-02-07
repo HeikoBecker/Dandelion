@@ -1,0 +1,37 @@
+oldDisplay=display;
+display = powers!;  //putting ! after a command supresses its output
+
+diam = 1b-40;
+approxPrec = 53;
+deg = 7;
+f = sin(x);
+dom = [0.1; 1];
+p = fpminimax(f, deg, [|approxPrec,approxPrec...|], dom, absolute);
+
+derivativeZeros = findzeros(diff(p-f),dom); // here the derivativeZeros is a list of intervals that guarantee to contain the exact zeros
+//derivativeZeros = inf(dom).:derivativeZeros:.sup(dom);
+maximum=0;
+for t in derivativeZeros do {
+  r = evaluate(abs(p-f), t); // r is an interval, we should take its upper bound
+  if sup(r) > maximum then { maximum=sup(r); argmaximum=t; };
+};
+
+print("<|");
+print("  transc := Fun ", f, " (Var \"x\");");
+print("  poly := [");
+for i from 0 to degree(p) do{
+    coeff_p = coeff(p, i);
+    print("    ", mantissa (coeff_p), " * inv ( 2 pow ", -exponent(coeff_p), ");");
+};
+print ("    ];");
+print("  eps := ", mantissa(maximum), " * inv (2 pow", -exponent(maximum), ");");
+print ("  iv := [ (\"x\",");
+print ("    (", mantissa (inf(dom)), " * inv (2 pow", -exponent(inf(dom)), "),");
+print ("     ", mantissa (sup(dom)), " * inv (2 pow", -exponent(sup(dom)), ")))];");
+print("|>");
+
+/* Some sanity checks to verify that our eps is not smaller than the reliable bounds obtained with dedicated methods */
+display=oldDisplay!;
+print("We got epsilon:", maximum);
+print("Sanity check with supnorm:", supnorm(p, f, dom, absolute, 2^(-40)));
+print("Sanity check with infinity norm:", infnorm(p-f, dom, "proof.txt")); //here the last argument is rather for fun, it gives the proof of the bound, you can remove it.
