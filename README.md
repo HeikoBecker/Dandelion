@@ -28,7 +28,7 @@ The first phase is defined across the files `transcApproxSemScript.sml` and
 the low-level approximation function for approximating a single elementary function
 with a single polynomial and proves soundness of this function.
 
-Theorem 4 from section 3 is proven in file `transcApproxSemScript.sml` as `approxTransc_sound`.
+Theorem 4 (First Phase Soundness) from section 3 is proven in file `transcApproxSemScript.sml` as `approxTransc_sound`.
 Variants of Theorem 5 are proven for the supported elementary function in file `mcLaurinApproxScript.sml`
 if they are not provided by HOL4.
 Variants of Theorem 6 are proven for the supported elementary functions in file `approxPolyScript.sml`.
@@ -37,11 +37,13 @@ The second phase is implemented and proven sound in the file `checkerScript.sml`
 It relies on the implementation of computable Sturm sequences in `sturmComputeScript.sml`
 and computable polynomial division in `euclidDivScript.sml`.
 
-Theorem 7 from section 4 is proven in file `checkerScript.sml` as the combination of
+Theorem 7 (Second Phase Soundness) from section 4 is proven in file `checkerScript.sml` as the combination of
 `numZeros_sound`, `validBounds_is_valid`, and `validateZerosLeqErr_sound`.
 
 Theorem 8 was ported from Harrison's HOL-Light proofs in file `drangScript.sml`
 and is called `BOUND_THEOREM_INEXACT`.
+
+Theorem 9 (Dandelion soundness) is called `checker_soundness` in file `checkerScript.sml`.
 
 The extracted binary is created in the directory `binary`.
 File `translateScript.sml` sets up the CakeML translation of the definitions of

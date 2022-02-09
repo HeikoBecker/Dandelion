@@ -5,7 +5,8 @@
 open realTheory realLib RealArith stringTheory polyTheory transcTheory;
 open renameTheory realPolyTheory transcLangTheory sturmComputeTheory sturmTheory
      drangTheory checkerDefsTheory pointCheckerTheory mcLaurinApproxTheory
-     realPolyProofsTheory;
+     realPolyProofsTheory approxPolyTheory transcIntvSemTheory
+     transcApproxSemTheory transcReflectTheory;
 open preambleDandelion;
 
 val _ = new_theory "checker";
@@ -86,33 +87,40 @@ Definition validateZerosLeqErr_def:
       else (Invalid "Bounding error too large", 0)
 End
 
-(* Unused for new structure
 (**
    Overall certificate checker combines all of the above functions into one that
    runs over the full certificate **)
 Definition checker_def:
-  checker (cert:certificate) approxSteps :result =
-  if ~ EVEN approxSteps ∨ ~ EVEN (approxSteps DIV 2) ∨ approxSteps = 0
+  checker (cert:certificate) approxSteps zeroGuess :checkerDefs$result =
+  if ~ EVEN approxSteps ∨ ~ EVEN (approxSteps DIV 2) ∨ approxSteps = 0 ∨ LENGTH cert.iv ≠ 1
   then Invalid "Need even number of approximation steps"
-  else case approxPoly cert.transc cert.iv cert.hints approxSteps of
-    | NONE => Invalid "Could not find appropriate approximation"
-    | SOME (transp, err) =>
-      let errorp = transp -p cert.poly;
-          deriv1 = diff errorp;
-          deriv2 = diff deriv1;
-      in
-        case sturm_seq deriv1 deriv2 of
-          NONE => Invalid "Could not compute sturm sequence"
-        | SOME sseq =>
-            case numZeros deriv1 deriv2 cert.iv sseq of
-            | (Valid, zeros ) =>
-                validateZerosLeqErr errorp cert.iv cert.zeros (cert.eps - err) zeros
-            | (Invalid s, _) => Invalid s
+  else
+    case interpIntv cert.transc cert.iv of
+    | NONE => Invalid "Could not compute IV bounds"
+    | SOME ivAnn =>
+      case approxTransc <| steps := approxSteps |> ivAnn of
+      | NONE => Invalid "Could not compute high-accuracy series"
+      | SOME errAnn =>
+        case reflectToPoly (erase errAnn) (FST (HD cert.iv)) of
+        | NONE => Invalid "Could not translate to polynomial"
+        | SOME transp =>
+            let errorp = transp -p cert.poly;
+                deriv1 = diff errorp;
+                deriv2 = diff deriv1;
+            in
+              if ~(FST (SND (HD cert.iv)) ≤ SND (SND (HD cert.iv))) then Invalid "Internal error"
+              else
+              case sturm_seq deriv1 deriv2 of
+                NONE => Invalid "Could not compute sturm sequence"
+              | SOME sseq =>
+                  case numZeros deriv1 deriv2 (SND (HD cert.iv)) sseq of
+                  | (Valid, zeros ) =>
+                      FST (validateZerosLeqErr errorp (SND (HD cert.iv)) zeroGuess (cert.eps - (getAnn errAnn)) zeros)
+                  | (Invalid s, _) => Invalid s
 End
-*)
 
 Theorem numZeros_sound:
-  ∀ sseq deriv1 iv zeros.
+  ∀ sseq deriv1 iv.
     sturm_seq deriv1 (diff deriv1) = SOME sseq ∧
     numZeros deriv1 (diff deriv1) iv sseq = (Valid, n) ∧
     FST iv ≤ SND iv ⇒
@@ -262,205 +270,66 @@ Proof
   >> cond_cases_tac >> gs[EVERY_FILTER_TRUE]
 QED
 
-(*
-Theorem getExpHint_SOME_MEM:
-  getExpHint hints = SOME n ⇒
-  MEM (EXP_UB_SPLIT n) hints
+Theorem ivAnnot_is_inp:
+  ∀ f env g. interpIntv f env = SOME g ⇒ erase g = f
 Proof
-  Induct_on ‘hints’ >> gs[getExpHint_def, CaseEq"hint"]
+  Induct_on ‘f’ >> simp[Once interpIntv_def]
+  >> rpt strip_tac >> res_tac
+  >> rpt VAR_EQ_TAC >> gs[erase_def]
 QED
-*)
 
-(*
 Theorem checker_soundness:
-  ∀ cert approxSteps.
-    checker cert approxSteps = Valid ⇒
+  ∀ cert approxSteps zeros.
+    checker cert approxSteps zeros = Valid ⇒
     ∀ x.
-      FST(cert.iv) ≤ x ∧ x ≤ SND (cert.iv) ⇒
-      abs (interp cert.transc x - poly cert.poly x) ≤ cert.eps
+      let iv = SND (HD (cert.iv)); var = FST (HD (cert.iv)) in
+      FST(iv) ≤ x ∧ x ≤ SND (iv) ⇒
+      ∃ r. interp cert.transc [(var,x)] = SOME r ∧
+      abs (r - poly cert.poly x) ≤ cert.eps
 Proof
   rpt gen_tac >> gs[checker_def]
   >> cond_cases_tac
   >> gs[checker_def, approxPoly_def,
-        CaseEq"option", CaseEq"prod", CaseEq"result", CaseEq"transc"]
+        CaseEq"option", CaseEq"prod", CaseEq"checkerDefs$result", CaseEq"transc"]
+  >> rpt strip_tac >> rpt VAR_EQ_TAC
+  >> qpat_x_assum ‘_ = Valid’ mp_tac >> cond_cases_tac
+  >> gs[CaseEq"option", CaseEq"prod", CaseEq"checkerDefs$result", CaseEq"transc"]
   >> rpt strip_tac >> rpt VAR_EQ_TAC
   (* Step 1: Approximate the transcendental fun with its taylor series *)
+  >> mp_with_then strip_assume_tac ‘interpIntv _ _ = SOME _’ interpIntv_sound
+  >> first_assum $ mp_then Any (drule_then mp_tac) approxTransc_sound
+  >> disch_then $ qspec_then ‘[(FST (HD cert.iv), x)]’ mp_tac
+  >> impl_tac
+  >- (
+    gs[varsContained_def] >> Cases_on ‘cert.iv’ >> gs[]
+    >> rpt strip_tac >> gs[FIND_def] >> rpt VAR_EQ_TAC
+    >> gs[INDEX_FIND_def] >> PairCases_on ‘h’ >> gs[]
+    >> VAR_EQ_TAC >> gs[])
+  >> disch_then strip_assume_tac
+  >> ‘interp cert.transc [(FST (HD cert.iv), x)] = SOME r1’
+    by (imp_res_tac ivAnnot_is_inp >> gs[])
+  >> qexists_tac ‘r1’ >> gs[]
+  >> real_rw ‘r1 - poly cert.poly x = r1 - r2 + (r2 - poly cert.poly x)’
   >> irule REAL_LE_TRANS
-  >> qexists_tac ‘abs (interp cert.transc x - poly transp x) + abs (poly transp x - poly cert.poly x)’
-  >> conj_tac
-  (* Approximation using triangle inequality *)
-  >- (
-    qmatch_goalsub_abbrev_tac ‘abs (transc_fun - poly _ _) ≤ _’
-    >> ‘transc_fun - poly cert.poly x = (transc_fun - poly transp x) + (poly transp x - poly cert.poly x)’
-      by real_tac
-    >> pop_assum $ rewrite_tac o single
-    >> irule REAL_ABS_TRIANGLE)
-  (* Split the error into the error from Taylor series and the rest *)
-  >> ‘cert.eps = err + (cert.eps - err)’ by real_tac
-  >> pop_assum $ once_rewrite_tac o single
-  (* Split the proof into proving two separate approximations *)
-  >> irule REAL_LE_ADD2 >> reverse conj_tac
-  (* 1. error between Taylor series and certificate polynomial *)
-  >- (
-    gs[GSYM poly_compat, GSYM eval_simps]
-    >> rewrite_tac [poly_compat]
-    >> irule validateZerosLeqErr_sound
-    >> qexists_tac ‘diff (transp -p cert.poly)’ >> gs[]
-    >> qexists_tac ‘cert.iv’ >> gs[]
-    >> qexists_tac ‘cert.zeros’ >> gs[]
-    >> ‘FST cert.iv ≤ SND cert.iv’ by real_tac
-    >> drule numZeros_sound
-    >> disch_then drule >> gs[])
-  (* 2. error between transcendental function and Taylor series *)
-  (* TODO: Make separate soundness proof *)
-  >> ‘(tr = "exp" ∧
-       ((cert.iv = (0, 1 * inv 2) ∧ getExpHint cert.hints = NONE) ∨
-        ∃ n. getExpHint cert.hints = SOME n ∧ cert.iv = (0,&n * inv 2))) ∨
-      tr = "cos" ∨
-      tr = "sin"’
-    by (every_case_tac >> gs[getExpHint_SOME_MEM])
-  (* exp function, 0 to 1/2 *)
-  >- (
-    gs[interp_def, getFun_def]
-    >> qspecl_then [‘x’, ‘approxSteps’] strip_assume_tac MCLAURIN_EXP_LE
-    >> pop_assum $ rewrite_tac o single
-    >> ‘poly transp x = evalPoly (exp_poly approxSteps) x’
-      by (gs[poly_compat] (* >> EVAL_TAC *))
-    >> pop_assum $ rewrite_tac o single
-    >> rewrite_tac[exp_sum_to_poly]
-    >> qmatch_goalsub_abbrev_tac ‘abs (exp_taylor + taylor_rem - exp_taylor) ≤ _’
-    >> ‘exp_taylor + taylor_rem - exp_taylor = taylor_rem’ by real_tac
-    >> pop_assum $ rewrite_tac o single
-    >> unabbrev_all_tac
-    >> ‘exp_err_small approxSteps = inv (&FACT approxSteps * 2 pow (approxSteps - 1))’ by EVAL_TAC
-    >> qspecl_then [‘approxSteps’, ‘x’,‘t’] mp_tac exp_remainder_bounded_small
-    >> impl_tac >> gs[]
-    >> real_tac)
-  (* exp function, 0 to 1 *)
-  >- (
-    gs[interp_def, getFun_def]
-    >> ‘1 ≠ inv 2’
-      by (once_rewrite_tac [GSYM REAL_INV1]
-          >> CCONTR_TAC
-          >> pop_assum $ mp_tac o SIMP_RULE std_ss []
-          >> rewrite_tac[REAL_INV_INJ] >> real_tac)
-    >> ‘err = exp_err_big n approxSteps ∧ transp = exp_poly approxSteps’ by gs[]
-    >> rpt VAR_EQ_TAC
-    >> rewrite_tac[GSYM poly_compat, eval_simps]
-    (* >> ‘exp_poly_cst = exp_poly approxSteps’ by EVAL_TAC *)
-    >> pop_assum $ rewrite_tac o single
-    >> rewrite_tac[exp_sum_to_poly]
-    >> qspecl_then [‘x’, ‘approxSteps’] strip_assume_tac MCLAURIN_EXP_LE
-    >> pop_assum $ rewrite_tac o single
-    >> qmatch_goalsub_abbrev_tac ‘abs (exp_taylor + taylor_rem - exp_taylor) ≤ _’
-    >> ‘exp_taylor + taylor_rem - exp_taylor = taylor_rem’ by real_tac
-    >> pop_assum $ rewrite_tac o single
-    >> unabbrev_all_tac
-    >> ‘exp_err_big n approxSteps = 2 pow n * &n pow approxSteps * inv (&FACT approxSteps * 2 pow approxSteps)’
-      by (rewrite_tac[] >> EVAL_TAC)
-    >> pop_assum $ rewrite_tac o single
-    >> qspecl_then [‘approxSteps’, ‘n’, ‘x’,‘t’] mp_tac exp_remainder_bounded_big
-    >> impl_tac
-    >- (rpt conj_tac >> gs[] >> real_tac)
-    >> rewrite_tac[])
-  (* cos function *)
-  >- (
-    gs[interp_def, getFun_def] >> rpt VAR_EQ_TAC
-    >> qspecl_then [‘x’, ‘approxSteps’] strip_assume_tac MCLAURIN_COS_LE
-    >> gs[]
-    >> pop_assum $ rewrite_tac o single
-    >> ‘poly (cos_poly approxSteps) x = evalPoly (cos_poly approxSteps) x’
-      by (rewrite_tac [cos_poly_cst_EVAL_THM]
-          >> gs[poly_compat, cos_poly_cst_def])
-    >> pop_assum $ rewrite_tac o single
-    >> gs[cos_sum_to_poly]
-    >> qmatch_goalsub_abbrev_tac ‘abs (cos_taylor + taylor_rem - cos_taylor) ≤ _’
-    >> ‘cos_taylor + taylor_rem - cos_taylor = taylor_rem’ by real_tac
-    >> pop_assum $ rewrite_tac o single
-    >> unabbrev_all_tac
-    >> ‘(x pow approxSteps) * cos t * inv (&FACT approxSteps) =
-        (cos t * ((x pow approxSteps) * inv (&FACT approxSteps)))’
-      by real_tac
-    >> ‘-(x pow approxSteps) * cos t * inv (&FACT approxSteps) =
-        -(cos t * ((x pow approxSteps) * inv (&FACT approxSteps)))’
-      by real_tac
-    >> rewrite_tac []
-    >> ntac 2 $ pop_assum $ rewrite_tac o single
-    >> rewrite_tac [GSYM REAL_MUL_ASSOC]
-    >> qmatch_goalsub_abbrev_tac ‘abs (cos _ * err_cos_concr)’
-    >> irule REAL_LE_TRANS
-    >> qexists_tac ‘ 1 * abs err_cos_concr’ >> conj_tac
-    >- (rewrite_tac[ABS_MUL] >> irule REAL_LE_RMUL_IMP >> unabbrev_all_tac >> gs[COS_BOUND, ABS_POS])
-    >> rewrite_tac[REAL_MUL_LID]
-    >> ‘abs err_cos_concr = err_cos_concr’
-      by (unabbrev_all_tac
-          >> rewrite_tac[ABS_REFL]
-          >> irule REAL_LE_MUL >> conj_tac
-          >- (irule REAL_LE_INV >> gs[REAL_POS])
-          >> irule REAL_LE_MUL >> conj_tac
-          >> gs[REAL_POW_GE0])
-    >> pop_assum $ rewrite_tac o single
-    >> unabbrev_all_tac
-    >> rewrite_tac [cos_err_def]
-    (* >> ‘abs (inv (&FACT approxSteps)) = inv (&FACT approxSteps)’
-      by (rewrite_tac[abs] >>  EVAL_TAC >> gs[])
-    >> pop_assum $ rewrite_tac o single *)
-    >> imp_res_tac EVEN_ODD_EXISTS >> gs[POW_MINUS1]
-    (* >> rewrite_tac[ABS_MUL, real_div, REAL_MUL_LID] *)
-    >> irule REAL_LE_LMUL_IMP >> gs[GSYM POW_ABS]
-    >> irule REAL_LE_TRANS
-    >> qexists_tac ‘abs (x pow (2 * m))’ >> gs[ABS_LE, GSYM POW_ABS]
-    >> irule POW_LE >> gs[ABS_POS]
-    >> irule RealSimpsTheory.maxAbs >> gs[])
-  (* sin *)
-  >> gs[interp_def, getFun_def] >> rpt VAR_EQ_TAC
-  >> qspecl_then [‘x’, ‘approxSteps’] strip_assume_tac MCLAURIN_SIN_LE
-  >> gs[]
-  >> pop_assum $ rewrite_tac o single
-  >> ‘poly (sin_poly approxSteps) x = evalPoly (sin_poly approxSteps) x’
-    by (rewrite_tac [sin_poly_cst_EVAL_THM]
-        >> gs[poly_compat, sin_poly_cst_def])
-  >> pop_assum $ rewrite_tac o single
-  >> gs[sin_sum_to_poly]
-  >> qmatch_goalsub_abbrev_tac ‘abs (sin_taylor + taylor_rem - sin_taylor) ≤ _’
-  >> ‘sin_taylor + taylor_rem - sin_taylor = taylor_rem’ by real_tac
-  >> pop_assum $ rewrite_tac o single
-  >> unabbrev_all_tac
-  >> ‘inv (&FACT approxSteps) * sin t  * x pow approxSteps * -1 pow (approxSteps DIV 2) =
-      (sin t * ((x pow approxSteps) * inv (&FACT approxSteps) * -1 pow (approxSteps DIV 2)))’
-    by real_tac
-  >> ‘-(x pow approxSteps) * inv (&FACT approxSteps) * sin t =
-      -(sin t * ((x pow approxSteps) * inv (&FACT approxSteps)))’
-    by real_tac
-  >> rewrite_tac []
-  >> ntac 2 $ pop_assum $ rewrite_tac o single
-  >> rewrite_tac[GSYM REAL_MUL_ASSOC]
-  >> qmatch_goalsub_abbrev_tac ‘_ * err_sin_concr’
-  >> rewrite_tac [ABS_NEG, Once ABS_MUL]
-  >> irule REAL_LE_TRANS
-  >> qexists_tac ‘ 1 * abs err_sin_concr’ >> conj_tac
-  >- (irule REAL_LE_RMUL_IMP >> unabbrev_all_tac >> gs[SIN_BOUND, ABS_POS])
-  >> rewrite_tac [REAL_MUL_LID, sin_err_def, ABS_MUL]
-  >> ‘abs err_sin_concr = err_sin_concr’
-    by (unabbrev_all_tac
-        >> rewrite_tac[ABS_REFL]
-        >> irule REAL_LE_MUL >> conj_tac
-        >> gs[REAL_POW_GE0]
-        >> irule REAL_LE_MUL >> gs[REAL_POS, REAL_POW_GE0])
-  >> pop_assum $ rewrite_tac o single
-  >> unabbrev_all_tac
-  >> rewrite_tac [sin_err_def]
-  (* >> ‘abs (inv (&FACT approxSteps)) = inv (&FACT approxSteps)’
-      by (rewrite_tac[abs] >>  EVAL_TAC >> gs[])
-    >> pop_assum $ rewrite_tac o single *)
-  >> imp_res_tac EVEN_ODD_EXISTS >> gs[POW_MINUS1]
-  (* >> rewrite_tac[ABS_MUL, real_div, REAL_MUL_LID] *)
-  >> irule REAL_LE_LMUL_IMP >> gs[GSYM POW_ABS]
-  >> irule REAL_LE_TRANS
-  >> qexists_tac ‘abs (x pow (2 * m))’ >> gs[ABS_LE, GSYM POW_ABS]
-  >> irule POW_LE >> gs[ABS_POS]
-  >> irule RealSimpsTheory.maxAbs >> gs[]
+  >> qexists_tac ‘abs (r1 - r2) + abs (r2 - poly cert.poly x)’
+  >> gs[REAL_ABS_TRIANGLE]
+  >> real_once_rw ‘cert.eps = getAnn errAnn + (cert.eps - getAnn errAnn)’
+  >> irule REAL_LE_ADD2 >> gs[]
+  >> Cases_on ‘validateZerosLeqErr (transp -p cert.poly) (SND (HD cert.iv)) zeros (cert.eps - getAnn errAnn) zeros'’
+  >> gs[] >> rpt VAR_EQ_TAC
+  >> mpx_with_then strip_assume_tac ‘reflectToPoly _ _ = _’ (GEN_ALL reflectSemEquiv)
+  >> ‘r2 = evalPoly transp x’ by gs[]
+  >> VAR_EQ_TAC
+  >> rewrite_tac [GSYM poly_compat, GSYM eval_simps]
+  >> rewrite_tac [poly_compat]
+  >> drule numZeros_sound >> disch_then $ drule_then drule
+  >> strip_tac
+  >> pop_assum $ mp_then Any mp_tac validateZerosLeqErr_sound
+  >> disch_then $ qspec_then ‘transp -p cert.poly’ mp_tac
+  >> simp[]
+  >> disch_then drule
+  >> disch_then $ qspec_then ‘x’ mp_tac
+  >> impl_tac >> gs[]
 QED
-*)
 
 val _ = export_theory();
