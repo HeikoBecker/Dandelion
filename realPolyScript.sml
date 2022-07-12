@@ -9,7 +9,7 @@
 **)
 open realTheory realLib RealArith bossLib polyTheory;
 open renameTheory;
-open preambleDandelion;
+open bitArithLib preambleDandelion;
 
 val _ = new_theory "realPoly";
 
@@ -73,38 +73,84 @@ Definition poly_add_def:
   poly_add p1 p2 = reduce (poly_add_aux p1 p2)
 End
 
-Definition poly_mul_cst_aux_def:
+Definition poly_mul_cst_aux_def[nocompute]:
   poly_mul_cst_aux c []:poly = [] ∧
   poly_mul_cst_aux c (c1::cs) = (c * c1) :: poly_mul_cst_aux c cs
 End
 
-Definition poly_mul_cst_def:
+Theorem poly_mul_cst_aux_comp[compute]:
+  poly_mul_cst_aux c p =
+  (if p = [] then [] else
+    let hdP = HD p; newC = c * hdP in newC :: poly_mul_cst_aux c (TL p))
+Proof
+  Induct_on ‘p’ >> gs[poly_mul_cst_aux_def]
+QED
+
+Definition poly_mul_cst_def[nocompute]:
   poly_mul_cst c p = reduce (poly_mul_cst_aux c p)
 End
+
+Theorem poly_mul_cst_comp[compute]:
+  poly_mul_cst c p =
+    let cmul_p = poly_mul_cst_aux c p in reduce cmul_p
+Proof
+  gs[poly_mul_cst_def]
+QED
 
 Definition poly_neg_def:
   poly_neg p = poly_mul_cst (-1) p
 End
 
-Definition poly_sub_def:
+Definition poly_sub_def[nocompute]:
   poly_sub p1 p2 = poly_add p1 (poly_neg p2)
 End
 
-Definition poly_mul_def:
+Theorem poly_sub_comp[compute]:
+  poly_sub p1 p2 =
+    let p2_neg = poly_mul_cst (-1) p2 in poly_add p1 p2_neg
+Proof
+  gs[poly_sub_def, poly_neg_def]
+QED
+
+Definition poly_mul_def[nocompute]:
   poly_mul [] p2 = [] ∧
   poly_mul (c1::cs1) p2 =
     poly_add (poly_mul_cst c1 p2) (if cs1 = [] then [] else 0::(poly_mul cs1 p2))
 End
+
+Theorem poly_mul_comp[compute]:
+  poly_mul p1 p2 =
+  if p1 = [] then [] else
+    let hd_p1 = HD p1;
+        mul_cst1 = poly_mul_cst hd_p1 p2;
+        remain = if TL p1 = [] then [] else let rec = (poly_mul (TL p1) p2) in 0::rec
+    in
+      poly_add mul_cst1 remain
+Proof
+  Induct_on ‘p1’ >> gs[poly_mul_def]
+QED
 
 Definition poly_pow_def:
   poly_pow p 0 = [1]:poly ∧
   poly_pow p (SUC n) = poly_mul p (poly_pow p n)
 End
 
-Definition derive_aux_def:
+Definition derive_aux_def[nocompute]:
   derive_aux n ([]:poly) = [] ∧
   derive_aux n (c::cs) = (&n * c) :: derive_aux (SUC n) cs
 End
+
+Theorem derive_aux_comp[compute]:
+  derive_aux n p =
+  if p = [] then []
+  else let hd_elem = HD p;
+           hd_deriv = &n * hd_elem;
+           rec_res = derive_aux (SUC n) (TL p)
+       in
+         hd_deriv :: rec_res
+Proof
+  Induct_on ‘p’ >> gs[derive_aux_def]
+QED
 
 Definition derive_def:
   derive (l:poly) = reduce (if l = [] then [] else derive_aux 1 (TL l))
@@ -289,7 +335,7 @@ Proof
   >> gs[poly_add_aux_def]
 QED
 
-Theorem poly_add_lid[compute]:
+Theorem poly_add_lid:
   p +p [ ] = reduce p ∧
   p +p [0] = reduce p
 Proof

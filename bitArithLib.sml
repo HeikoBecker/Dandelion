@@ -1,23 +1,19 @@
+(**
+  Library implementing Karatsuba multiplication for the HOL4 evaluator
+  based on the theorems in bitArithScript.sml
+**)
 structure bitArithLib =
 struct
-  open bitArithTheory;
-  open preambleDandelion;
+  open HolKernel Parse Theory arithmeticTheory realTheory
+        boolLib bossLib; (* HOL4 dependencies *)
+  open bitArithTheory; (* Theory dependencies *)
 
   (** A simple karatsuba conversion **)
-  val karatsuba_lim = ref $ Arbnum.fromInt (200)
+  val karatsuba_lim = ref $ Arbnum.fromInt 200
 
-  fun timed s f x =
-    let
-      val hol_mode_time0 = #usr (Timer.checkCPUTimer Globals.hol_clock);
-      val res = f x
-      val _ = let val t = #usr (Timer.checkCPUTimer Globals.hol_clock)
-                  val elapsed = Time.-(t, hol_mode_time0)
-              in
-                print ("\n*** Time taken for "^ s^ " : " ^Time.toString elapsed^"s\n")
-              end
-    in
-      res
-    end
+  val mk_frac_thm = DB.find_all "mk_frac_thm" |> hd |> snd |> #1
+  val id_thm = DB.find_all "id_thm" |> hd |> snd |> #1
+  val mul_frac_thm = DB.find_all "mul_frac_thm" |> hd |> snd |> #1
 
   local
     val subst_let_conv = (REWR_CONV LET_THM THENC BETA_CONV)
@@ -76,15 +72,10 @@ struct
       end
   end;
 
-  (** Some infrastructural theorems, used for simplifying real number arithmetic **)
-  (** TODO: Move to a theory file! **)
-  val mk_frac_thm = Q.prove (‘!(x:real). x = x / 1’, gs[]);
-  val id_thm = Q.prove (‘! (x:real). x = x’, gs[])
-  val mul_frac_thm = Q.prove (‘! a b c (d:real). (a / b) * (c / d) = (a * c) / (b * d)’, gs[])
-
   (** Now turn this into a conversion on reals **)
   local
-    (* Apply conversion c to term tm if tm is not a negation, otherwise use its rand with RAND_CONV **)
+    (* Apply conversion c to term tm if tm is not a negation,
+       otherwise use its rand with RAND_CONV **)
     fun real_neg_app_conv c tm =
       if realSyntax.is_negated tm then RAND_CONV c tm else c tm
     fun app_karatsuba_conv tm =
@@ -94,23 +85,41 @@ struct
   fun real_mul_conv tm =
     if not $ realSyntax.is_mult tm then raise UNCHANGED else
     let
+      val _ = print "rmc ";
       val (lhsTm, rhsTm) = realSyntax.dest_mult tm
       val ((lnom, lden), rw_lhs_thm) =
-        if realSyntax.is_div lhsTm then (realSyntax.dest_div lhsTm, SPEC lhsTm id_thm) else ((lhsTm, “1”), SPEC lhsTm mk_frac_thm)
+        if realSyntax.is_div lhsTm
+        then (realSyntax.dest_div lhsTm, SPEC lhsTm id_thm)
+        else ((lhsTm, “1”), SPEC lhsTm mk_frac_thm)
       val ((rnom, rden), rw_rhs_thm) =
-        if realSyntax.is_div rhsTm then (realSyntax.dest_div rhsTm, SPEC rhsTm id_thm) else ((rhsTm, “1”), SPEC rhsTm mk_frac_thm)
-      val th = tm |> ONCE_REWRITE_CONV [rw_lhs_thm, rw_rhs_thm] |> RIGHT_CONV_RULE $ ONCE_REWRITE_CONV [mul_frac_thm]
+        if realSyntax.is_div rhsTm
+        then (realSyntax.dest_div rhsTm, SPEC rhsTm id_thm)
+        else ((rhsTm, “1”), SPEC rhsTm mk_frac_thm)
+      val th = tm |> ONCE_REWRITE_CONV [rw_lhs_thm, rw_rhs_thm]
+                |> RIGHT_CONV_RULE $ ONCE_REWRITE_CONV [mul_frac_thm]
       (* Before multiplying, simplify *)
       val th = th |> RIGHT_CONV_RULE $ REWRITE_CONV [mult_ints, MULT_CLAUSES]
-      val thKaratsuba_nom = th |> RIGHT_CONV_RULE $ RATOR_CONV (RAND_CONV (real_neg_app_conv (RAND_CONV app_karatsuba_conv)))
-      val thKaratsuba_denom = thKaratsuba_nom |> RIGHT_CONV_RULE $ RAND_CONV (real_neg_app_conv (RAND_CONV app_karatsuba_conv))
+      val thKaratsuba_nom = th
+        |> RIGHT_CONV_RULE $ RATOR_CONV $ RAND_CONV $ real_neg_app_conv $
+              RAND_CONV app_karatsuba_conv
+      val thKaratsuba_denom = thKaratsuba_nom
+        |> RIGHT_CONV_RULE $ RAND_CONV $ real_neg_app_conv $ RAND_CONV app_karatsuba_conv
     in
       thKaratsuba_denom
     end
   end;
 
-  fun use_karatsuba() =
-    (computeLib.del_consts [“($*):real->real->real”, “($*):num->num->num”];
-      computeLib.add_convs [(“($*):real->real->real”,2, real_mul_conv), (“($*):num->num->num”, 2, karatsuba_conv)])
+  val _ =
+    (* record the library as a dependency for future theories *)
+    (Theory.add_ML_dependency "bitArithLib";
+      (*Theory.adjoin_to_theory
+        {sig_ps = NONE,
+          struct_ps =
+            SOME(fn _ => PP.add_string "val _ = bitArithLib.use_karatsuba();")}; *)
+      (* Remove old definitions of multiplication for reals and nums *)
+      computeLib.del_consts [“($*):real->real->real”, “($*):num->num->num”];
+      (* Add karatsuba multiplication as conversion for reals and nums *)
+      computeLib.add_convs [(“($*):real->real->real”,2, real_mul_conv),
+                            (“($*):num->num->num”, 2, karatsuba_conv)])
 
 end

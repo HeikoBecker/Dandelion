@@ -6,6 +6,7 @@
 open pred_setTheory listTheory bossLib RealArith realTheory polyTheory;
 open realPolyTheory sturmTheory realPolyProofsTheory euclidDivTheory;
 open renameTheory;
+open bitArithLib;
 open preambleDandelion;
 
 val _ = new_theory "sturmCompute";

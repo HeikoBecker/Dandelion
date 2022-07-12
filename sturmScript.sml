@@ -329,7 +329,7 @@ Proof
       UNDISCH_TAC `~(poly f c = &0)`
       >> UNDISCH_TAC ‘∀x. a ≤ x ∧ x ≤ b ∧
                        EXISTS (λp. poly p x = 0) (f::f'::h::l) ⇒ x = c’
-      >> REWRITE_TAC[EXISTS_DEF] >> mesonLib.MESON_TAC[]
+      >> REWRITE_TAC[listTheory.EXISTS_DEF] >> mesonLib.MESON_TAC[]
     )
   >> `a:real <= b:real` by
     ( UNDISCH_TAC `c:real <= b:real` >> UNDISCH_TAC `a:real <= c:real` >> REAL_ARITH_TAC )
@@ -361,7 +361,7 @@ Proof
            EXISTS (\p. poly p x = &0) (CONS f (CONS f' (CONS h l)))
            ==> (x = c)`
         >> DISCH_THEN(MP_TAC o SPEC `x:real`)
-        >> REWRITE_TAC[EXISTS_DEF]
+        >> REWRITE_TAC[listTheory.EXISTS_DEF]
         >> `(poly h c = &0) <=> (poly f c = &0)` by
           (
             UNDISCH_TAC `poly f c = - (poly (k ## h) c)`
@@ -476,7 +476,7 @@ Proof
   >> SUBGOAL_THEN `~(poly f' a = &0) /\ ~(poly f' b = &0)`
                                       STRIP_ASSUME_TAC
   >- (
-    RULE_ASSUM_TAC(REWRITE_RULE[EXISTS_DEF])
+    RULE_ASSUM_TAC(REWRITE_RULE[listTheory.EXISTS_DEF])
     >> mesonLib.ASM_MESON_TAC[REAL_LE_REFL, REAL_LT_REFL]
   )
   >> FIRST_ASSUM(MP_TAC o SPEC `PRE n`)
@@ -491,12 +491,12 @@ Proof
   >> RULE_ASSUM_TAC(REWRITE_RULE[STURM_def]) THEN ASM_REWRITE_TAC[]
   >> W(C SUBGOAL_THEN (fn th => REWRITE_TAC[th]) o (fn t => `^t`) o lhand o lhand o snd)
   >- (
-    REWRITE_TAC[EXISTS_DEF]
+    REWRITE_TAC[listTheory.EXISTS_DEF]
     >> REPEAT STRIP_TAC >> FIRST_ASSUM MATCH_MP_TAC
-    >> ASM_REWRITE_TAC[EXISTS_DEF]
+    >> ASM_REWRITE_TAC[listTheory.EXISTS_DEF]
     >> first_assum match_mp_tac
-    >> ASM_REWRITE_TAC[EXISTS_DEF] >> first_assum match_mp_tac
-    >> ASM_REWRITE_TAC[EXISTS_DEF]
+    >> ASM_REWRITE_TAC[listTheory.EXISTS_DEF] >> first_assum match_mp_tac
+    >> ASM_REWRITE_TAC[listTheory.EXISTS_DEF]
   )
   >> DISCH_TAC
   >> ONCE_REWRITE_TAC[MAP] >> REWRITE_TAC[varrec_def]
@@ -508,7 +508,7 @@ Proof
     >> UNDISCH_TAC `!x. a <= x /\ x <= b /\
        EXISTS (\p. poly p x = &0) (CONS f (CONS f' (CONS h l)))
        ==> (x = c)`
-    >> REWRITE_TAC[EXISTS_DEF] >> mesonLib.MESON_TAC[]
+    >> REWRITE_TAC[listTheory.EXISTS_DEF] >> mesonLib.MESON_TAC[]
   )
   >> MP_TAC(SPECL [`a:real`, `b:real`, `f':real list`] STURM_NOROOT)
   >> ASM_REWRITE_TAC[] >> rpt strip_tac
@@ -626,7 +626,7 @@ Proof
     X_GEN_TAC “x:real” >> STRIP_TAC
     >> FIRST_ASSUM(MP_TAC o GEN_REWRITE_RULE I empty_rewrites [RSQUAREFREE_ROOTS])
     >> DISCH_THEN(MP_TAC o SPEC `c:real`) >>  ASM_REWRITE_TAC[]
-    >> rpt strip_tac >> ‘x=c’ by (first_x_assum irule >> gs[EXISTS_DEF])
+    >> rpt strip_tac >> ‘x=c’ by (first_x_assum irule >> gs[listTheory.EXISTS_DEF])
     >> rpt BasicProvers.VAR_EQ_TAC
     >> mesonLib.ASM_MESON_TAC[]
   )
@@ -818,7 +818,7 @@ Proof
   >> disch_then irule
   >> EXISTS_TAC `c:real`
   >> REPEAT CONJ_TAC
-  >- metis_tac[EXISTS_DEF]
+  >- metis_tac[listTheory.EXISTS_DEF]
   >- (
     MP_TAC(SPEC `f:real list` RSQUAREFREE_ROOTS)
     >> ASM_REWRITE_TAC[]
@@ -1707,7 +1707,7 @@ Proof
         >- (
           STRIP_TAC
           >> ASM_REWRITE_TAC[] >> FIRST_ASSUM MATCH_MP_TAC
-          >> ASM_REWRITE_TAC[EXISTS_DEF]
+          >> ASM_REWRITE_TAC[listTheory.EXISTS_DEF]
           >> ‘i n ≤ x ∧ x ≤ i (SUC n) ∧ poly f x = 0’ by
             (
               pop_assum mp_tac
@@ -1751,7 +1751,7 @@ Proof
       >> UNDISCH_TAC `~(poly f c = &0)`
       >> SUBGOAL_THEN `x:real = c` (fn th => ASM_REWRITE_TAC[SYM th])
       >- (
-        FIRST_ASSUM MATCH_MP_TAC >> ASM_REWRITE_TAC[EXISTS_DEF]
+        FIRST_ASSUM MATCH_MP_TAC >> ASM_REWRITE_TAC[listTheory.EXISTS_DEF]
         >> ‘i n ≤ x ∧ x ≤ i (SUC n) ∧ poly f x = 0’ by
           (
             pop_assum mp_tac

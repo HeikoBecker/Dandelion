@@ -1,7 +1,7 @@
-(*
+(**
    Proof tools (e.g. tactics) used throughout the development.
-  Copied from CakeML (https://github.com/CakeML/cakeml)
-*)
+   Copied from CakeML (https://github.com/CakeML/cakeml)
+**)
 structure preambleDandelion =
 struct
 local open intLib in end;

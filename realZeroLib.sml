@@ -4,17 +4,18 @@ struct
   open realPolyTheory realPolyProofsTheory checkerTheory moreRealTheory
        sturmComputeTheory transcLangTheory transcIntvSemTheory approxPolyTheory
        transcApproxSemTheory transcReflectTheory euclidDivTheory;
-  open bitArithLib bossLib preambleDandelion;
+  open bossLib preambleDandelion;
 
   exception ZeroLibErr of string;
 
-  val useBinary = ref true;
-  val createMetiTarskiQuery = ref true;
-  val createSOSFile = ref true;
+  val useBinary = ref false;
+  val createMetiTarskiQuery = ref false;
+  val createCoqIntervalQuery = ref false;
+  val createSOSFile = ref false;
 
   val _ = computeLib.add_thms [REAL_INV_1OVER] computeLib.the_compset;
   val _ = computeLib.add_funs [polyTheory.poly_diff_def, polyTheory.poly_diff_aux_def, polyTheory.poly_def]
-  val _ = bitArithLib.use_karatsuba();
+  (* val _ = bitArithLib.use_karatsuba(); *)
 
   fun appOrErr (P:term -> bool) (f:term -> 'a) (t:term) (errMsg:string) :'a =
     if P t then f t else raise ZeroLibErr errMsg;
@@ -103,7 +104,7 @@ struct
       val _ = if not (type_of diffP = “:poly”) orelse not (type_of dom = “:real#real”)
               then raise ZeroLibErr "STURM_SEQ_CONV needs polynomial inputs" else ()
       val diffP2 = Parse.Term ‘diff ^diffP’ |> EVAL
-      val _ = print "Starting Sturm Sequence computation"
+      val _ = print "Starting Sturm Sequence computation\n"
       val sseq_aux = decls "sturm_seq_aux";
       (* val _ = computeLib.monitoring := SOME (same_const (hd sseq_aux)) *)
       val sseqOpt = Parse.Term ‘sturm_seq ^diffP (diff ^diffP)’ |> EVAL
@@ -118,12 +119,12 @@ struct
       val zerosThmFull = MATCH_MP zerosThm iv_validThm
       val _ = save_thm ("zerosThmFull", zerosThmFull)
     in
-      (print "Finished sturm sequence computations"; (zerosThmFull, numZeros))
+      (print "Finished sturm sequence computations\n"; (zerosThmFull, numZeros))
     end;
 
   fun getZerosFromSollya polyDiff var lb ub = let
     val polyAsReal = Parse.Term ‘evalPoly ^polyDiff ^var’
-                     |> EVAL
+                     |> REWRITE_CONV [evalPoly_def]
                      |> SIMP_RULE std_ss [REAL_LDISTRIB, REAL_MUL_LZERO,
                                           REAL_MUL_RZERO, REAL_ADD_LID,
                                           REAL_MUL_ASSOC, REAL_ADD_RID,
@@ -227,19 +228,23 @@ struct
       val (poly, var) = strip_comb polyApp |> snd |> (fn ts => (hd ts, hd (tl ts)))
       val polyDiff = Parse.Term ‘diff ^poly’ |> EVAL
       val (zerosThm, numZeros) = STURM_SEQ_CONV (polyDiff |> concl |> rhs) dom
+      val _ = print "Getting zeros from Sollya\n"
       val res = getZerosFromSollya (polyDiff |> rhs o concl) var lb ub
+      val _ = print "Got zeros from Sollya\n"
       val zeroList = Parse.Term [QUOTE res]
       val zeros = numSyntax.dest_numeral numZeros |> Arbnum.toInt
     in
       if zeros <= 0 then raise ZeroLibErr "Need to check for at least one zero"
       else
         let
+          val _ = print ("Starting zero validation\n");
           val validationThm =
             Parse.Term ‘validateZerosLeqErr ^poly ^dom ^zeroList ^eps ^numZeros’
             |> EVAL
           val _ = save_thm ("validationThm", validationThm)
           val _ = if Term.compare (rhs o concl $ validationThm |> pairSyntax.dest_pair |> fst, “Valid”) = EQUAL then ()
                   else raise ZeroLibErr "Failed to prove validity of zeros found by Sollya"
+          val _ = print ("Finished zero validation\n");
           val resThm = (MATCH_MP (REWRITE_RULE [GSYM AND_IMP_INTRO] validateZerosLeqErr_sound) (GSYM polyDiff))
                         |> Q.SPEC ‘(^lb, ^ub)’ |> SIMP_RULE std_ss []
                         |> (fn th => MATCH_MP th zerosThm)
@@ -422,6 +427,34 @@ struct
       (TextIO.output (fileStr, text); TextIO.closeOut fileStr)
     end;
 
+  fun writeCoqIntervalQuery transc poly eps iv_lo iv_hi var = let
+    val polyAsString = Parse.Term ‘evalPoly ^poly x’
+                     |> EVAL
+                     |> SIMP_RULE std_ss [REAL_LDISTRIB, REAL_MUL_LZERO,
+                                          REAL_MUL_RZERO, REAL_ADD_LID,
+                                          REAL_MUL_ASSOC, REAL_ADD_RID]
+                     |> rhs o concl
+                     |> term_to_string
+    val transcAsReal = Parse.Term ‘interp ^transc [^var, x]’
+                        |> EVAL
+    val transcAsString = term_to_string (optionSyntax.dest_some (transcAsReal |> rhs o concl))
+                         |> String.translate (fn x => if x = #"x" then "(x)" else implode [x])
+    val eps_eval = ((REWRITE_CONV [REAL_INV_1OVER] eps) handle UNCHANGED => REFL eps) |> rhs o concl
+                  |> (fn t => (EVAL t handle UNCHANGED => REFL t))|> rhs o concl
+    val text =
+      "Require Import Interval.Tactic.\n"^
+      "Require Import Reals.\n\n"^
+      "Goal\n"^
+      "forall (x:R),(("^ (cst2String iv_lo) ^ " <= x <= " ^ (cst2String iv_hi) ^
+      ") ->\n" ^
+      "Rabs (" ^ transcAsString ^ " - (" ^ polyAsString ^ "))\n\t<=\n\t" ^
+      (cst2String eps_eval) ^ ")%R.\n"^
+      "Proof.\nintros.\ntime interval with (i_bisect x, i_taylor x).\nQed."
+    val fileStr = TextIO.openOut ("./" ^ Theory.current_theory() ^ ".v")
+    in
+      (TextIO.output (fileStr, text); TextIO.closeOut fileStr)
+    end;
+
   fun validateCert (defTh:thm) numApprox =
   let
     fun eval t = Parse.Term t |> EVAL
@@ -435,6 +468,7 @@ struct
     val iv_FST = EVAL “FST ^ivTm”
     val iv_SND = EVAL “SND ^ivTm”
     val _ = if (!createMetiTarskiQuery) then writeMetiTarskiQuery transc poly eps (iv_FST |> rhs o concl) (iv_SND |> rhs o concl) var else ()
+    val _ = if (!createCoqIntervalQuery) then writeCoqIntervalQuery transc poly eps (iv_FST |> rhs o concl) (iv_SND |> rhs o concl) var else ()
     val approxSideThm = eval ‘approxPolySideCond ^numApprox’ |> SIMP_RULE std_ss [EQ_CLAUSES]
     val ivAnnotThm = eval ‘interpIntv ^transc ^iv’
     val ivAnnotTm = ivAnnotThm  |> rhs o concl |> getSome "Could not compute interval bounds"

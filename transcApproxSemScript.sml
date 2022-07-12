@@ -6,6 +6,7 @@
 open realTheory realLib RealArith transcTheory;
 open IntervalArithTheory ErrorValidationTheory sqrtApproxTheory;
 open realPolyTheory transcLangTheory approxPolyTheory transcIntvSemTheory approxCompErrTheory;
+open bitArithLib;
 open preambleDandelion;
 
 val _ = new_theory "transcApproxSem";

@@ -498,6 +498,22 @@ Proof
   >> irule REAL_INV_LE_1 >> gs[ABS_N]
 QED
 
+Triviality POW4_MINUS1[simp]:
+  -1 pow (4 * x) = 1
+Proof
+  ‘4 * x = 2 * (2 * x)’ by gs[]
+  >> pop_assum $ once_rewrite_tac o single
+  >> rewrite_tac[POW_MINUS1]
+QED
+
+Triviality POW4_DIV2[simp]:
+  -1 pow (4 * x DIV 2) = 1
+Proof
+  ‘4 * x = (x * 2) * 2’ by gs[]
+  >> pop_assum $ once_rewrite_tac o single
+  >> gs[MULT_DIV]
+QED
+
 Theorem approxPoly_soundness:
   ∀ transc iv approxSteps p err.
     approxPolySideCond approxSteps ∧
@@ -523,7 +539,7 @@ Proof
       >> pop_assum $ rewrite_tac o single
       >> unabbrev_all_tac
       >> ‘expErrSmall approxSteps = inv (&FACT approxSteps * 2 pow (approxSteps - 1))’
-         by EVAL_TAC
+         by gs[expErrSmall_def]
       >> rename1 ‘exp t’
       >> qspecl_then [‘approxSteps’, ‘x’,‘t’] mp_tac exp_remainder_bounded_small
       >> impl_tac >> gs[]
@@ -545,8 +561,9 @@ Proof
     >> pop_assum $ rewrite_tac o single
     >> unabbrev_all_tac
     >> qmatch_goalsub_abbrev_tac ‘expErrBig n _’
-    >> ‘expErrBig n approxSteps = 2 pow n * &n pow approxSteps * inv (&FACT approxSteps * 2 pow approxSteps)’
-      by (rewrite_tac[] >> EVAL_TAC)
+    >> ‘expErrBig n approxSteps =
+        2 pow n * &n pow approxSteps * inv (&FACT approxSteps * 2 pow approxSteps)’
+      by (rewrite_tac[] >> gs[expErrBig_def])
     >> pop_assum $ rewrite_tac o single
     >> qspecl_then [‘approxSteps’, ‘n’, ‘x’,‘t’] mp_tac exp_remainder_bounded_big
     >> impl_tac
@@ -617,9 +634,10 @@ Proof
     >> unabbrev_all_tac
     >> rewrite_tac [sinErr_def]
     >> imp_res_tac EVEN_ODD_EXISTS >> gs[POW_MINUS1]
-    >> irule REAL_LE_LMUL_IMP >> gs[GSYM POW_ABS]
+    >> irule REAL_LE_LMUL_IMP >> gs[POW_ABS]
     >> irule REAL_LE_TRANS
-    >> qexists_tac ‘abs (x pow (2 * m'))’ >> gs[ABS_LE, GSYM POW_ABS]
+    >> qexists_tac ‘abs (x pow (2 * m'))’ >> gs[ABS_LE, POW_ABS]
+    >> rewrite_tac[GSYM POW_ABS]
     >> irule POW_LE >> gs[ABS_POS]
     >> irule RealSimpsTheory.maxAbs >> gs[])
     (* cos function *)
@@ -660,7 +678,8 @@ Proof
       >> imp_res_tac EVEN_ODD_EXISTS >> gs[POW_MINUS1]
       >> irule REAL_LE_LMUL_IMP >> gs[GSYM POW_ABS]
       >> irule REAL_LE_TRANS
-      >> qexists_tac ‘abs (x pow (2 * m'))’ >> gs[ABS_LE, GSYM POW_ABS]
+      >> qexists_tac ‘abs (x pow (2 * m'))’ >> gs[ABS_LE, POW_ABS]
+      >> rewrite_tac [GSYM POW_ABS]
       >> irule POW_LE >> gs[ABS_POS]
       >> irule RealSimpsTheory.maxAbs >> gs[])
   (* atn *)

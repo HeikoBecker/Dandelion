@@ -7,6 +7,7 @@ open renameTheory realPolyTheory transcLangTheory sturmComputeTheory sturmTheory
      drangTheory checkerDefsTheory pointCheckerTheory mcLaurinApproxTheory
      realPolyProofsTheory approxPolyTheory transcIntvSemTheory
      transcApproxSemTheory transcReflectTheory;
+(* open bitArithLib; *)
 open preambleDandelion;
 
 val _ = new_theory "checker";
@@ -95,28 +96,32 @@ Definition checker_def:
   if ~ EVEN approxSteps ∨ ~ EVEN (approxSteps DIV 2) ∨ approxSteps = 0 ∨ LENGTH cert.iv ≠ 1
   then Invalid "Need even number of approximation steps"
   else
+    (** Interval bounds **)
     case interpIntv cert.transc cert.iv of
     | NONE => Invalid "Could not compute IV bounds"
     | SOME ivAnn =>
-      case approxTransc <| steps := approxSteps |> ivAnn of
-      | NONE => Invalid "Could not compute high-accuracy series"
-      | SOME errAnn =>
-        case reflectToPoly (erase errAnn) (FST (HD cert.iv)) of
-        | NONE => Invalid "Could not translate to polynomial"
-        | SOME transp =>
-            let errorp = transp -p cert.poly;
-                deriv1 = diff errorp;
-                deriv2 = diff deriv1;
-            in
-              if ~(FST (SND (HD cert.iv)) ≤ SND (SND (HD cert.iv))) then Invalid "Internal error"
-              else
-              case sturm_seq deriv1 deriv2 of
-                NONE => Invalid "Could not compute sturm sequence"
-              | SOME sseq =>
-                  case numZeros deriv1 deriv2 (SND (HD cert.iv)) sseq of
-                  | (Valid, zeros ) =>
-                      FST (validateZerosLeqErr errorp (SND (HD cert.iv)) zeroGuess (cert.eps - (getAnn errAnn)) zeros)
-                  | (Invalid s, _) => Invalid s
+    (** High-accuracy Taylor series **)
+    case approxTransc <| steps := approxSteps |> ivAnn of
+    | NONE => Invalid "Could not compute high-accuracy series"
+    | SOME errAnn =>
+    (** Get a polynomial representation **)
+    case reflectToPoly (erase errAnn) (FST (HD cert.iv)) of
+    | NONE => Invalid "Could not translate to polynomial"
+    | SOME transp =>
+      let errorp = transp -p cert.poly;
+          deriv1 = diff errorp;
+          deriv2 = diff deriv1;
+      in
+      if ~(FST (SND (HD cert.iv)) ≤ SND (SND (HD cert.iv)))
+      then Invalid "Internal error"
+      else
+      case sturm_seq deriv1 deriv2 of
+        NONE => Invalid "Could not compute sturm sequence"
+      | SOME sseq =>
+      case numZeros deriv1 deriv2 (SND (HD cert.iv)) sseq of
+      | (Invalid s, _) => Invalid s
+      | (Valid, zeros ) =>
+          FST (validateZerosLeqErr errorp (SND (HD cert.iv)) zeroGuess (cert.eps - (getAnn errAnn)) zeros)
 End
 
 Theorem numZeros_sound:
@@ -230,16 +235,16 @@ Proof
 QED
 
 Theorem validateZerosLeqErr_sound:
-  ∀ deriv errorp iv zerosList zeros err eps.
-    deriv = diff errorp ∧
-    {x | FST iv ≤ x ∧ x ≤ SND iv ∧ (poly deriv x = &0)} HAS_SIZE zeros ∧
+  ∀ derivative errorp iv zerosList zeros err eps.
+    derivative = diff errorp ∧
+    {x | FST iv ≤ x ∧ x ≤ SND iv ∧ (poly derivative x = &0)} HAS_SIZE zeros ∧
     validateZerosLeqErr errorp iv zerosList err zeros = (Valid, eps) ⇒
     ∀ x.
       FST iv ≤ x ∧ x ≤ SND iv ⇒
       abs(poly errorp x) ≤ err
 Proof
   rpt strip_tac
-  >> ‘∀ x. FST iv ≤ x ∧ x ≤ SND iv ⇒ ((λ x. poly errorp x) diffl poly deriv x) x’
+  >> ‘∀ x. FST iv ≤ x ∧ x ≤ SND iv ⇒ ((λ x. poly errorp x) diffl poly derivative x) x’
      by (rpt strip_tac >> gs[polyTheory.POLY_DIFF])
   >> imp_res_tac validateZerosLeqErr_EVERY
   >> qpat_x_assum ‘validateZerosLeqErr _ _ _ _ _ = _’ mp_tac

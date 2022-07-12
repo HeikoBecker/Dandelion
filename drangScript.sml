@@ -308,7 +308,7 @@ Proof
     >> ‘x ≤ SND h’ by real_tac
     >> rpt $ disch_then drule
     >> gs[combinTheory.o_DEF]
-    >> irule MONO_EXISTS
+    >> irule LIST_EXISTS_MONO
     >> qexists_tac ‘λ (u,v). u ≤ x ∧ x ≤ v’ >> gs[])
   >>  disch_then $ X_CHOOSE_THEN “m:num” strip_assume_tac
   >> irule LESS_OR

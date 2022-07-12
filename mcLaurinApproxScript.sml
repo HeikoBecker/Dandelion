@@ -1684,7 +1684,7 @@ Proof
     >> gs[]
     >> transitivity_for ‘exp (y + err) - exp y’ >> conj_tac
     >> rewrite_tac [real_sub]
-    >- (gs[REAL_LE_RADD, EXP_MONO_LE])
+    >- gs[REAL_LE_RADD, EXP_MONO_LE]
     >> rewrite_tac[EXP_ADD]
     >> ‘exp y * exp err = exp y * (1 + (exp err - 1))’ by real_tac
     >> pop_assum $ once_rewrite_tac o single
